@@ -45,38 +45,38 @@ async function getClassHandler(req, res, next) {
 
         if (role === 'faculty') {
             query = `
-            SELECT c.id, c.class_code, c.title, c.description, c.created_at, COUNT(e.id)::INT AS student_count
-            FROM class c
-            LEFT JOIN enrollments e ON c.id = e.class_id
-            WHERE c.faculty_id = $1
-            GROUP BY c.id
-            ORDER BY c.created_at DESC
+                SELECT c.id, c.class_code, c.title, c.description, c.created_at, COUNT(e.id)::INT AS student_count
+                FROM class c
+                LEFT JOIN enrollments e ON c.id = e.class_id
+                WHERE c.faculty_id = $1
+                GROUP BY c.id
+                ORDER BY c.created_at DESC
             `;
             values = [userId];
         } else if (role === 'student') {
             query = `
-            SELECT c.id, c.class_code, c.title, c.description, c.created_at,
+                SELECT c.id, c.class_code, c.title, c.description, c.created_at,
                     u.first_name AS faculty_first_name,
                     u.last_name AS faculty_last_name,
                     e.enrolled_at
-            FROM enrollments e
-            JOIN class c ON e.class_id = c.id
-            JOIN users u ON c.faculty_id = u.id
-            WHERE e.student_id = $1
-            ORDER BY e.enrolled_at DESC
+                FROM enrollments e
+                JOIN class c ON e.class_id = c.id
+                JOIN users u ON c.faculty_id = u.id
+                WHERE e.student_id = $1
+                ORDER BY e.enrolled_at DESC
             `;
             values = [userId];
         } else if (role === 'admin') {
             query = `
-            SELECT c.id, c.class_code, c.title, c.description, c.created_at,
+                SELECT c.id, c.class_code, c.title, c.description, c.created_at,
                     u.first_name AS faculty_first_name, 
                     u.last_name AS faculty_last_name,
                     COUNT(e.id)::INT AS student_count
-            FROM class c
-            JOIN users u ON c.faculty_id = u.id
-            LEFT JOIN enrollments e ON c.id = e.class_id
-            GROUP BY c.id, u.first_name, u.last_name
-            ORDER BY c.created_at DESC
+                FROM class c
+                JOIN users u ON c.faculty_id = u.id
+                LEFT JOIN enrollments e ON c.id = e.class_id
+                GROUP BY c.id, u.first_name, u.last_name
+                ORDER BY c.created_at DESC
             `;
             values = [];
         }
@@ -111,11 +111,11 @@ async function getClassIdHandler(req, res, next) {
 
         if (role === 'student') {
             const enrollmentCheck = await db.query(
-            'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
-            [id, userId]
+                'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
+                [id, userId]
             );
             if (enrollmentCheck.rows.length === 0) {
-            return res.status(403).json({ error: 'Forbidden: You are not enrolled in this class.' });
+                return res.status(403).json({ error: 'Forbidden: You are not enrolled in this class.' });
             }
         }
 
@@ -170,8 +170,7 @@ async function patchClassIdHandler(req, res, next) {
 
         const query = `
             UPDATE class 
-            SET title = COALESCE($1, title), 
-                description = COALESCE($2, description)
+            SET title = COALESCE($1, title), description = COALESCE($2, description)
             WHERE id = $3
             RETURNING id, class_code, title, description, faculty_id, created_at
         `;

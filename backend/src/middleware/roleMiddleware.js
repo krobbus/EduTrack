@@ -21,15 +21,6 @@ app.route('/api/users/:id')
   .patch(authorizeRoles('admin'), patchUserHandler)
   .delete(authorizeRoles('admin'), deleteUserHandler);
 
-// enrollments
-app.route('/api/enrollments')
-  .get(authorizeRoles('admin', 'faculty', 'student'), getEnrollmentsHandler)
-  .post(authorizeRoles('admin', 'faculty', 'student'), postEnrollmentHandler);
-
-app.route('/api/enrollments/:id')
-  .patch(authorizeRoles('admin', 'faculty'), patchEnrollmentHandler)
-  .delete(authorizeRoles('admin', 'faculty', 'student'), deleteEnrollmentHandler);
-
 // modules
 app.route('/api/modules')
   .get(authorizeRoles('faculty', 'student'), getModulesHandler)
