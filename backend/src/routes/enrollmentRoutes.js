@@ -6,11 +6,11 @@ const enrollmentController = require('../controllers/enrollmentController');
 
 router.use(verifyToken);
 
-app.route('/api/enrollments')
+router.route('/api/enrollments')
   .get(authorizeRoles('admin', 'faculty', 'student'), enrollmentController.getEnrollmentHandler)
   .post(authorizeRoles('admin', 'faculty', 'student'), enrollmentController.postEnrollmentHandler);
 
-app.route('/api/enrollments/:id')
+router.route('/api/enrollments/:id')
   .patch(authorizeRoles('admin', 'faculty'), enrollmentController.patchEnrollmentIdHandler)
   .delete(authorizeRoles('admin', 'faculty', 'student'), enrollmentController.deleteEnrollmentIdHandler);
 

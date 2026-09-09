@@ -6,11 +6,11 @@ const classController = require('../controllers/classController');
 
 router.use(verifyToken);
 
-app.route('/')
+router.route('/')
   .get(authorizeRoles('admin', 'faculty', 'student'), classController.getClassHandler)
   .post(authorizeRoles('faculty'), classController.postClassHandler);
 
-app.route('/:id')
+router.route('/:id')
   .get(authorizeRoles('admin', 'faculty', 'student'), classController.getClassIdHandler)
   .patch(authorizeRoles('faculty'), classController.patchClassIdHandler)
   .delete(authorizeRoles('admin', 'faculty'), classController.deleteClassIdHandler);
