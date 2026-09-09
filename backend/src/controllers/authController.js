@@ -2,7 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-async function register(req, res, next){
+async function registerHandler(req, res, next){
     try{
         const { email, password, first_name, middle_name, last_name, role } = req.body;
 
@@ -43,7 +43,7 @@ async function register(req, res, next){
     }
 }
 
-async function login(req, res, next){
+async function loginHandler(req, res, next){
     try{
         const { email, password } = req.body;
         let query = '';
@@ -84,6 +84,6 @@ async function login(req, res, next){
 };
 
 module.exports = {
-  register,
-  login,
+  registerHandler,
+  loginHandler,
 };
