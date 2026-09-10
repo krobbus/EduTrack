@@ -1,18 +1,25 @@
-const express = require('express');
+import express from 'express';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { authorizeRoles } from '../middleware/roleMiddleware.js';
+import {
+  getClassHandler,
+  getClassIdHandler,
+  postClassHandler,
+  patchClassIdHandler,
+  deleteClassIdHandler,
+} from '../controllers/classController.js';
+
 const router = express.Router();
-const { verifyToken } = require('../middleware/authMiddleware');
-const { authorizeRoles } = require('../middleware/roleMiddleware');
-const classController = require('../controllers/classController');
 
 router.use(verifyToken);
 
 router.route('/')
-  .get(authorizeRoles('admin', 'faculty', 'student'), classController.getClassHandler)
-  .post(authorizeRoles('faculty'), classController.postClassHandler);
+  .get(authorizeRoles('admin', 'faculty', 'student'), getClassHandler)
+  .post(authorizeRoles('faculty'), postClassHandler);
 
 router.route('/:id')
-  .get(authorizeRoles('admin', 'faculty', 'student'), classController.getClassIdHandler)
-  .patch(authorizeRoles('faculty'), classController.patchClassIdHandler)
-  .delete(authorizeRoles('admin', 'faculty'), classController.deleteClassIdHandler);
+  .get(authorizeRoles('admin', 'faculty', 'student'), getClassIdHandler)
+  .patch(authorizeRoles('faculty'), patchClassIdHandler)
+  .delete(authorizeRoles('admin', 'faculty'), deleteClassIdHandler);
 
-module.exports = router;
+export default router;

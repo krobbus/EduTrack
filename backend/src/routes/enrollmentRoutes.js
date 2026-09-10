@@ -1,17 +1,23 @@
-const express = require('express');
+import express from 'express';
+import { verifyToken } from '../middleware/authMiddleware.js';
+import { authorizeRoles } from '../middleware/roleMiddleware.js';
+import {
+  getEnrollmentHandler,
+  postEnrollmentHandler,
+  patchEnrollmentIdHandler,
+  deleteEnrollmentIdHandler,
+} from '../controllers/enrollmentController.js';
+
 const router = express.Router();
-const { verifyToken } = require('../middleware/authMiddleware');
-const { authorizeRoles } = require('../middleware/roleMiddleware');
-const enrollmentController = require('../controllers/enrollmentController');
 
 router.use(verifyToken);
 
 router.route('/')
-  .get(authorizeRoles('admin', 'faculty', 'student'), enrollmentController.getEnrollmentHandler)
-  .post(authorizeRoles('admin', 'faculty', 'student'), enrollmentController.postEnrollmentHandler);
+  .get(authorizeRoles('admin', 'faculty', 'student'), getEnrollmentHandler)
+  .post(authorizeRoles('admin', 'faculty', 'student'), postEnrollmentHandler);
 
 router.route('/:id')
-  .patch(authorizeRoles('admin', 'faculty'), enrollmentController.patchEnrollmentIdHandler)
-  .delete(authorizeRoles('admin', 'faculty', 'student'), enrollmentController.deleteEnrollmentIdHandler);
+  .patch(authorizeRoles('admin', 'faculty'), patchEnrollmentIdHandler)
+  .delete(authorizeRoles('admin', 'faculty', 'student'), deleteEnrollmentIdHandler);
 
-module.exports = router;
+export default router;
