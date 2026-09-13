@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
+  host: 'localhost',
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
@@ -29,6 +29,7 @@ export const query = async (text, params) => {
     return await pool.query(text, params);
   } catch (err) {
     const mapped = pgErrors[err.code];
+
     if (mapped) {
       err.statusCode = mapped.status;
       err.message = mapped.message;
@@ -39,6 +40,7 @@ export const query = async (text, params) => {
 
 export const testConnection = async () => {
   const client = await pool.connect();
+  
   try {
     await client.query('SELECT 1');
     console.log('Database connected successfully.');
