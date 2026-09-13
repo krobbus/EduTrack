@@ -1,12 +1,12 @@
 import express from 'express'
-import { verifyToken } from '../middleware/authMiddleware'
-import { authorizeRoles } from '../middleware/roleMiddleware'
+import verifyToken from '../middleware/authMiddleware.js'
+import { authorizeRoles } from '../middleware/roleMiddleware.js'
 import {
     getSubmissionHandler,
     postSubmissionHandler,
     patchSubmissionIdHandler,
     deleteSubmissionIdHandler
-} from '../controllers/submissionController'
+} from '../controllers/submissionController.js'
 
 const router = express.Router()
 
