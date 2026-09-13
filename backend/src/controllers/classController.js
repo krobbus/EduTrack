@@ -77,7 +77,10 @@ export async function getClassHandler(req, res, next) {
     }
 
     const result = await db.query(query, values);
-    return res.status(200).json({ classes: result.rows });
+    return res.status(200).json({
+      count: result.rows.length,
+      classes: result.rows,
+    });
   } catch (err) {
     next(err);
   }
@@ -136,7 +139,7 @@ export async function postClassHandler(req, res, next) {
       VALUES ($1, $2, $3, $4)
       RETURNING id, class_code, title, description, faculty_id, created_at
     `;
-    const values = [class_code, title, description || null, faculty_id];
+    const values = [class_code, title.trim(), description ? description.trim() : null, faculty_id];
     const result = await db.query(query, values);
 
     return res.status(201).json({
@@ -169,7 +172,11 @@ export async function patchClassIdHandler(req, res, next) {
       WHERE id = $3
       RETURNING id, class_code, title, description, faculty_id, created_at
     `;
-    const result = await db.query(query, [title, description, id]);
+    const result = await db.query(query, [
+      title ? title.trim() : null,
+      description ? description.trim() : null,
+      id,
+    ]);
 
     return res.status(200).json({
       message: 'Class updated successfully.',
@@ -186,17 +193,16 @@ export async function deleteClassIdHandler(req, res, next) {
     const { id: userId, role } = req.user;
 
     const classCheck = await db.query(
-      'SELECT id, title, faculty_id FROM class WHERE id = $1',
+      'SELECT id, faculty_id FROM class WHERE id = $1',
       [id]
     );
 
     if (classCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Class not found.' });
     }
+    const existingClass = classCheck.rows[0];
 
-    const targetClass = classCheck.rows[0];
-
-    if (role !== 'admin' && targetClass.faculty_id !== userId) {
+    if (role !== 'admin' && existingClass.faculty_id !== userId) {
       return res.status(403).json({
         error: 'Forbidden: You can only delete classes that you created.',
       });
@@ -204,9 +210,7 @@ export async function deleteClassIdHandler(req, res, next) {
 
     await db.query('DELETE FROM class WHERE id = $1', [id]);
 
-    return res.status(200).json({
-      message: `Class "${targetClass.title}" was successfully deleted.`,
-    });
+    return res.status(200).json({ message: 'Class deleted successfully.' });
   } catch (err) {
     next(err);
   }

@@ -54,7 +54,7 @@ export async function postUserHandler(req, res, next) {
     const result = await db.query(query, values);
 
     return res.status(201).json({
-      message: 'User successfully created.',
+      message: 'User created successfully.',
       user: result.rows[0],
     });
   } catch (err) {
@@ -140,7 +140,7 @@ export async function patchUserIdHandler(req, res, next) {
     }
 
     return res.status(200).json({
-      message: 'Successfully updated profile.',
+      message: 'User updated successfully.',
       user: result.rows[0],
     });
   } catch (err) {
@@ -164,7 +164,7 @@ export async function deleteUserIdHandler(req, res, next) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    return res.status(200).json({ message: 'Successfully deleted.' });
+    return res.status(200).json({ message: 'User deleted successfully.' });
   } catch (err) {
     next(err);
   }

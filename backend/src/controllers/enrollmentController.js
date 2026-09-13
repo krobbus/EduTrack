@@ -60,45 +60,7 @@ export async function getEnrollmentHandler(req, res, next) {
 
 export async function postEnrollmentHandler(req, res, next) {
   try {
-    const { id: student_id } = req.user;
-    const { class_id } = req.body;
-
-    if (!class_id) {
-      return res.status(400).json({ error: 'class ID is required.' });
-    }
-
-    const classCheck = await db.query('SELECT id FROM class WHERE id = $1', [class_id]);
-    if (classCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Class not found.' });
-    }
-
-    const existingEnrollment = await db.query(
-      'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
-      [class_id, student_id]
-    );
-    if (existingEnrollment.rows.length > 0) {
-      return res.status(409).json({ error: 'You are already enrolled in this class.' });
-    }
-
-    const query = `
-      INSERT INTO enrollments (class_id, student_id)
-      VALUES ($1, $2)
-      RETURNING id, class_id, student_id, enrolled_at
-    `;
-    const result = await db.query(query, [class_id, student_id]);
-
-    return res.status(201).json({
-      message: 'Successfully Enrolled',
-      enrollments: result.rows[0],
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function patchEnrollmentIdHandler(req, res, next) {
-  try {
-    const { id: student_id } = req.user;
+    const { id: userId } = req.user;
     const { class_id } = req.body;
 
     if (!class_id) {
@@ -112,21 +74,82 @@ export async function patchEnrollmentIdHandler(req, res, next) {
 
     const existingEnrollment = await db.query(
       'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
-      [class_id, student_id]
+      [class_id, userId]
     );
     if (existingEnrollment.rows.length > 0) {
       return res.status(409).json({ error: 'You are already enrolled in this class.' });
     }
 
-    const insertQuery = `
+    const query = `
       INSERT INTO enrollments (class_id, student_id)
       VALUES ($1, $2)
       RETURNING id, class_id, student_id, enrolled_at
     `;
-    const result = await db.query(insertQuery, [class_id, student_id]);
+    const values = [class_id, userId];
+    const result = await db.query(query, values);
 
     return res.status(201).json({
-      message: 'Successfully Enrolled',
+      message: 'Enrollment created successfully.',
+      enrollment: result.rows[0],
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function patchEnrollmentIdHandler(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { id: userId, role } = req.user;
+    const { class_id } = req.body;
+
+    if (!class_id) {
+      return res.status(400).json({ error: 'class_id is required.' });
+    }
+
+    const enrollmentCheck = await db.query(
+      `
+        SELECT e.id, e.student_id, c.faculty_id
+        FROM enrollments e
+        JOIN class c ON c.id = e.class_id
+        WHERE e.id = $1
+      `,
+      [id]
+    );
+
+    if (enrollmentCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Enrollment record not found.' });
+    }
+    const enrollment = enrollmentCheck.rows[0];
+
+    if (role !== 'admin' && enrollment.faculty_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You cannot update this enrollment.' });
+    }
+
+    const classCheck = await db.query('SELECT id FROM class WHERE id = $1', [class_id]);
+    if (classCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+
+    const existingEnrollment = await db.query(
+      'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
+      [class_id, enrollment.student_id]
+    );
+    if (existingEnrollment.rows.length > 0) {
+      return res.status(409).json({ error: 'Student is already enrolled in this class.' });
+    }
+
+    const query = `
+      UPDATE enrollments
+      SET class_id = $1
+      WHERE id = $2
+      RETURNING id, class_id, student_id, enrolled_at
+    `;
+    const values = [class_id, id];
+    const result = await db.query(query, values);
+
+    return res.status(200).json({
+      message: 'Enrollment updated successfully.',
       enrollment: result.rows[0],
     });
   } catch (err) {
@@ -152,21 +175,18 @@ export async function deleteEnrollmentIdHandler(req, res, next) {
     if (checkEnrollment.rows.length === 0) {
       return res.status(404).json({ error: 'Enrollment record not found.' });
     }
+    const enrollment = checkEnrollment.rows[0];
 
-    const record = checkEnrollment.rows[0];
-
-    if (role === 'student' && record.student_id !== userId) {
+    if (role === 'student' && enrollment.student_id !== userId) {
       return res.status(403).json({ error: 'Forbidden: You can only drop your own enrollments.' });
     }
-    if (role === 'faculty' && record.faculty_id !== userId) {
+    if (role === 'faculty' && enrollment.faculty_id !== userId) {
       return res.status(403).json({ error: 'Forbidden: You can only drop students from your own classes.' });
     }
 
     await db.query('DELETE FROM enrollments WHERE id = $1', [id]);
 
-    return res.status(200).json({
-      message: 'Successfully removed enrollment record.',
-    });
+    return res.status(200).json({ message: 'Enrollment deleted successfully.' });
   } catch (err) {
     next(err);
   }
