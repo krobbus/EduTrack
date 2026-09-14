@@ -10,6 +10,7 @@ import assignmentRoutes from './routes/assignmentRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
 import meetingRoutes from './routes/meetingRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import noteRoutes from './routes/noteRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/assignment', assignmentRoutes);
 app.use('/api/submission', submissionRoutes);
 app.use('/api/meeting', meetingRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/note', noteRoutes);
 
 app.use(errorHandler);
 
