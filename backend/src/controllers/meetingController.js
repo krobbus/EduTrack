@@ -2,14 +2,29 @@ import db from '../config/db.js';
 
 export async function getMeetingHandler(req, res, next) {
   try {
-    const { classId } = req;
+    const { id: classId } = req.params;
     const { id: userId, role } = req.user;
+
+    if (!classId) {
+      return res.status(400).json({ error: 'class ID is required.' });
+    }
+
+    const classCheck = await db.query('SELECT id, faculty_id FROM class WHERE id = $1', [classId]);
+    if (classCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+    const classData = classCheck.rows[0];
+
+    if (role === 'faculty' && classData.faculty_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not teach this class.' });
+    }
 
     if (role === 'student') {
       const enrollmentCheck = await db.query(
         'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
         [classId, userId]
       );
+
       if (enrollmentCheck.rows.length === 0) {
         return res.status(403).json({ error: 'Forbidden: You are not enrolled in this class.' });
       }
@@ -20,8 +35,8 @@ export async function getMeetingHandler(req, res, next) {
         me.id AS meeting_id, me.type, me.location, me.meeting_url, me.title, me.description, me.start_date, me.end_date, me.created_by, me.created_at,
         mo.id AS module_id, mo.title AS module_title,
         c.id AS class_id, c.title AS class_title, c.faculty_id
-      FROM meeting me
-      JOIN module mo ON mo.id = me.module_id
+      FROM meetings me
+      JOIN modules mo ON mo.id = me.module_id
       JOIN class c ON c.id = me.class_id
       WHERE c.id = $1
       ORDER BY me.start_date DESC
@@ -40,16 +55,41 @@ export async function getMeetingHandler(req, res, next) {
 
 export async function postMeetingHandler(req, res, next) {
   try {
-    const { id: userId } = req.user;
-    const { classId } = req;
+    const { id: classId } = req.params
+    const { id: userId, role } = req.user;
     const { type, location, meeting_url, title, description, start_date, end_date, module_id } = req.body;
 
     if (!module_id || !type || !location || !meeting_url || !title || !description || !start_date || !end_date) {
       return res.status(400).json({ error: 'Fill all required fields.' });
     }
 
+    if (!classId) {
+      return res.status(400).json({ error: 'class ID is required.' });
+    }
+
+    const classCheck = await db.query('SELECT id, faculty_id FROM class WHERE id = $1', [classId]);
+    if (classCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+    const classData = classCheck.rows[0];
+
+    if (role === 'faculty' && classData.faculty_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not teach this class.' });
+    }
+
+    if (role === 'student') {
+      const enrollmentCheck = await db.query(
+        'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
+        [classId, userId]
+      );
+
+      if (enrollmentCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Forbidden: You are not enrolled in this class.' });
+      }
+    }
+
     const query = `
-      INSERT INTO meeting (class_id, module_id, type, location, meeting_url, title, description, start_date, end_date, created_by)
+      INSERT INTO meetings (class_id, module_id, type, location, meeting_url, title, description, start_date, end_date, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id, class_id, module_id, type, location, meeting_url, title, description, start_date, end_date, created_by, created_at
     `;
@@ -75,7 +115,7 @@ export async function patchMeetingIdHandler(req, res, next) {
     const meetingCheck = await db.query(
       `
         SELECT m.id, c.faculty_id
-        FROM meeting m
+        FROM meetings m
         JOIN class c ON c.id = m.class_id
         WHERE m.id = $1
       `,
@@ -92,7 +132,7 @@ export async function patchMeetingIdHandler(req, res, next) {
     }
 
     const query = `
-      UPDATE meeting
+      UPDATE meetings
       SET
         type = COALESCE($1, type),
         location = COALESCE($2, location),
@@ -124,7 +164,7 @@ export async function deleteMeetingIdHandler(req, res, next) {
     const meetingCheck = await db.query(
       `
         SELECT m.id, c.faculty_id
-        FROM meeting m
+        FROM meetings m
         JOIN class c ON c.id = m.class_id
         WHERE m.id = $1
       `,

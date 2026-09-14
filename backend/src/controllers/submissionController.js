@@ -10,7 +10,7 @@ export async function getSubmissionHandler(req, res, next) {
     const assignmentCheck = await db.query(
       `
         SELECT a.id, a.class_id, c.faculty_id
-        FROM assignment a
+        FROM assignments a
         JOIN class c ON c.id = a.class_id
         WHERE a.id = $1
       `,
@@ -42,8 +42,8 @@ export async function getSubmissionHandler(req, res, next) {
           s.submission_text, s.file_url, s.grade, s.feedback, s.status, s.submitted_at, s.graded_at, s.graded_by,
           a.id AS assignment_id, a.class_id, a.module_id, a.title AS assignment_title, a.description AS assignment_description, a.due_date, a.max_points, a.created_by, a.created_at,
           u.id AS student_id, u.first_name AS student_first_name, u.last_name AS student_last_name, u.email AS student_email
-        FROM submission s
-        JOIN assignment a ON a.id = s.assignment_id
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
         JOIN users u ON u.id = s.student_id
         WHERE a.id = $1
         ORDER BY s.submitted_at DESC
@@ -54,8 +54,8 @@ export async function getSubmissionHandler(req, res, next) {
         SELECT
           s.submission_text, s.file_url, s.grade, s.feedback, s.status, s.submitted_at, s.graded_at, s.graded_by,
           a.id AS assignment_id, a.class_id, a.module_id, a.title AS assignment_title, a.description AS assignment_description, a.due_date, a.max_points, a.created_by, a.created_at
-        FROM submission s
-        JOIN assignment a ON a.id = s.assignment_id
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
         WHERE a.id = $1 AND s.student_id = $2
         ORDER BY s.submitted_at DESC
       `;
@@ -67,8 +67,8 @@ export async function getSubmissionHandler(req, res, next) {
           s.feedback, s.status, s.submitted_at, s.graded_at, s.graded_by,
           a.id AS assignment_id, a.title AS assignment_title, a.max_points,
           u.id AS student_id, u.first_name AS student_first_name, u.last_name AS student_last_name, u.email AS student_email
-        FROM submission s
-        JOIN assignment a ON a.id = s.assignment_id
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
         JOIN users u ON u.id = s.student_id
         WHERE a.id = $1
         ORDER BY s.submitted_at DESC
@@ -95,7 +95,7 @@ export async function postSubmissionHandler(req, res, next) {
     const assignmentCheck = await db.query(
       `
         SELECT a.id, a.class_id
-        FROM assignment a
+        FROM assignments a
         JOIN enrollments e ON e.class_id = a.class_id
         WHERE a.id = $1 AND e.student_id = $2
       `,
@@ -109,7 +109,7 @@ export async function postSubmissionHandler(req, res, next) {
     }
 
     const query = `
-      INSERT INTO submission (assignment_id, student_id, submission_text, file_url, status, submitted_at)
+      INSERT INTO submissions (assignment_id, student_id, submission_text, file_url, status, submitted_at)
       VALUES ($1, $2, $3, $4, 'submitted', NOW())
       RETURNING id, assignment_id, student_id, submission_text, file_url, status, submitted_at
     `;
@@ -142,8 +142,8 @@ export async function patchSubmissionIdHandler(req, res, next) {
     const submissionCheck = await db.query(
       `
         SELECT s.id, c.faculty_id
-        FROM submission s
-        JOIN assignment a ON a.id = s.assignment_id
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
         JOIN class c ON c.id = a.class_id
         WHERE s.id = $1
       `,
@@ -162,18 +162,18 @@ export async function patchSubmissionIdHandler(req, res, next) {
     }
 
     const query = `
-      UPDATE submission
+      UPDATE submissions
       SET
-        grade = $1,
+        grade = COALESCE($1, grade),
         feedback = COALESCE($2, feedback),
-        status = $3,
+        status = COALESCE($3, status),
         graded_at = NOW(),
-        graded_by = $4
+        graded_by = COALESCE($4, graded_by)
       WHERE id = $5
       RETURNING id, assignment_id, student_id, grade, feedback, status, submitted_at, graded_at, graded_by;
     `;
 
-    const values = [grade, feedback || null, status || 'graded', userId, submissionId];
+    const values = [grade, feedback || null, status, userId, submissionId];
     const result = await db.query(query, values);
 
     return res.status(200).json({
@@ -193,8 +193,8 @@ export async function deleteSubmissionIdHandler(req, res, next) {
     const submissionCheck = await db.query(
       `
         SELECT s.id, c.faculty_id
-        FROM submission s
-        JOIN assignment a ON a.id = s.assignment_id
+        FROM submissions s
+        JOIN assignments a ON a.id = s.assignment_id
         JOIN class c ON c.id = a.class_id
         WHERE s.id = $1
       `,
@@ -212,7 +212,7 @@ export async function deleteSubmissionIdHandler(req, res, next) {
       });
     }
 
-    await db.query('DELETE FROM submission WHERE id = $1', [submissionId]);
+    await db.query('DELETE FROM submissions WHERE id = $1', [submissionId]);
 
     return res.status(200).json({ message: 'Submission deleted successfully.' });
   } catch (err) {

@@ -2,14 +2,29 @@ import db from '../config/db.js';
 
 export async function getAssignmentHandler(req, res, next) {
   try {
-    const { classId } = req;
+    const { id: classId } = req.params;
     const { id: userId, role } = req.user;
+
+    if (!classId) {
+      return res.status(400).json({ error: 'class ID is required.' });
+    }
+
+    const classCheck = await db.query('SELECT id, faculty_id FROM class WHERE id = $1', [classId]);
+    if (classCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+    const classData = classCheck.rows[0];
+
+    if (role === 'faculty' && classData.faculty_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You do not teach this class.' });
+    }
 
     if (role === 'student') {
       const enrollmentCheck = await db.query(
         'SELECT id FROM enrollments WHERE class_id = $1 AND student_id = $2',
         [classId, userId]
       );
+
       if (enrollmentCheck.rows.length === 0) {
         return res.status(403).json({ error: 'Forbidden: You are not enrolled in this class.' });
       }
@@ -20,8 +35,8 @@ export async function getAssignmentHandler(req, res, next) {
         a.class_id, a.module_id, a.title AS assignment_title, a.description AS assignment_description, a.due_date, a.max_points, a.created_at,
         m.id AS module_id, m.title AS module_title,
         c.id AS class_id, c.class_code, c.title AS class_title
-      FROM assignment a
-      JOIN module m ON m.id = a.module_id
+      FROM assignments a
+      JOIN modules m ON m.id = a.module_id
       JOIN class c ON c.id = a.class_id
       WHERE c.id = $1
       ORDER BY a.due_date DESC
@@ -57,7 +72,7 @@ export async function postAssignmentHandler(req, res, next) {
     }
 
     const query = `
-      INSERT INTO assignment (class_id, module_id, title, description, due_date, max_points, created_by)
+      INSERT INTO assignments (class_id, module_id, title, description, due_date, max_points, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id, class_id, module_id, title, description, due_date, max_points, created_by, created_at
     `;
@@ -82,7 +97,7 @@ export async function patchAssignmentIdHandler(req, res, next) {
     const assignmentCheck = await db.query(
       `
         SELECT a.id, c.faculty_id
-        FROM assignment a
+        FROM assignments a
         JOIN class c ON c.id = a.class_id
         WHERE a.id = $1
       `,
@@ -99,7 +114,7 @@ export async function patchAssignmentIdHandler(req, res, next) {
     }
 
     const query = `
-      UPDATE assignment
+      UPDATE assignments
       SET
         class_id = COALESCE($1, class_id),
         module_id = COALESCE($2, module_id),
@@ -139,7 +154,7 @@ export async function deleteAssignmentIdHandler(req, res, next) {
     const assignmentCheck = await db.query(
       `
         SELECT a.id, c.faculty_id
-        FROM assignment a
+        FROM assignments a
         JOIN class c ON c.id = a.class_id
         WHERE a.id = $1
       `,
@@ -155,8 +170,7 @@ export async function deleteAssignmentIdHandler(req, res, next) {
       return res.status(403).json({ error: 'Forbidden: You are not authorized to delete this assignment.' });
     }
 
-    await db.query('DELETE FROM assignment WHERE id = $1', [assignmentId]);
-
+    await db.query('DELETE FROM assignments WHERE id = $1', [assignmentId]);
     return res.status(200).json({ message: 'Assignment deleted successfully.' });
   } catch (err) {
     next(err);
